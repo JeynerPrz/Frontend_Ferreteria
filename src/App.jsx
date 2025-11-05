@@ -10,7 +10,7 @@ import Catalogo from "./views/Catalogo";
 import Ventas from "./views/Venta";
 import Clientes from "./views/Cliente";
 import Empleados from "./views/Empleado";
-import Compras from "./views/Compra";
+import Compras from "./views/compra.jsx";
 import Usuarios from "./views/Usuario";
 // Importar archivo de estilos
 import "./App.css";
