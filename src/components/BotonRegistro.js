@@ -1,6 +1,6 @@
 import React from 'react'; // Importaciones
 function BotonRegistro() {
-return (
+return ( 
 <button>
 Registrar cliente
 </button>

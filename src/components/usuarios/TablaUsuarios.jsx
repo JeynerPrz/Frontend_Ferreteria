@@ -3,10 +3,17 @@ import BotonOrden from "../ordenamiento/BotonOrden";
 import React, { useState } from 'react';
 import Paginacion from "../ordenamiento/Paginacion";
 
-const TablaCategorias = ({ categorias, cargando, abrirModalEdicion, abrirModalEliminacion,
-totalElementos, elementosPorPagina, paginaActual, establecerPaginaActual }) => {
+const TablaUsuarios = ({ 
+  usuarios, 
+  cargando, 
+  abrirModalEdicion, 
+  abrirModalEliminacion,
+  totalElementos,
+  elementosPorPagina,
+  paginaActual,
+  establecerPaginaActual }) => {
 
-  const [orden, setOrden] = useState({ campo: "id_categoria", direccion: "asc" });
+  const [orden, setOrden] = useState({ campo: "id_usuario", direccion: "asc" });
 
   const manejarOrden = (campo) => {
     setOrden((prev) => ({
@@ -16,15 +23,13 @@ totalElementos, elementosPorPagina, paginaActual, establecerPaginaActual }) => {
     }));
   };
 
-
-  const categoriasOrdenadas = [...categorias].sort((a, b) => {
+  const usuariosOrdenados = [...usuarios].sort((a, b) => {
     const valorA = a[orden.campo];
     const valorB = b[orden.campo];
 
     if (typeof valorA === "number" && typeof valorB === "number") {
       return orden.direccion === "asc" ? valorA - valorB : valorB - valorA;
     }
-
     const comparacion = String(valorA).localeCompare(String(valorB));
     return orden.direccion === "asc" ? comparacion : -comparacion;
   });
@@ -42,43 +47,41 @@ totalElementos, elementosPorPagina, paginaActual, establecerPaginaActual }) => {
 
   return (
     <>
-      <Table variant="primary" striped bordered hover>
+      <Table Table variant="primary" striped bordered hover>
         <thead>
           <tr>
-
-            <BotonOrden campo="id_categoria" orden={orden} manejarOrden={manejarOrden}>
+            <BotonOrden campo="id_usuario" orden={orden} manejarOrden={manejarOrden}>
               ID
             </BotonOrden>
-            <BotonOrden campo="nombre_categoria" orden={orden} manejarOrden={manejarOrden}>
-              Nombre Categoría
+            <BotonOrden campo="usuario" orden={orden} manejarOrden={manejarOrden}>
+              Usuario
             </BotonOrden>
-            <BotonOrden campo="descripcion_categoria" orden={orden} manejarOrden={manejarOrden}>
-              Descripción Categoría
+            <BotonOrden campo="contraseña" orden={orden} manejarOrden={manejarOrden}>
+              Contraseña
             </BotonOrden>
-
             <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {categoriasOrdenadas.map((categoria) => {
+          {usuariosOrdenados.map((usuario) => {
             return (
-              <tr key={categoria.id_categoria}>
-                <td>{categoria.id_categoria}</td>
-                <td>{categoria.nombre_categoria}</td>
-                <td>{categoria.descripcion_categoria}</td>
+              <tr key={usuario.id_usuario}>
+                <td>{usuario.id_usuario}</td>
+                <td>{usuario.usuario}</td>
+                <td>{usuario.contraseña}</td>
                 <td>
                   <Button
                     variant="outline-warning"
                     size="sm"
                     className="me-2"
-                    onClick={() => abrirModalEdicion(categoria)}
+                    onClick={() => abrirModalEdicion(usuario)}
                   >
                     <i className="bi bi-pencil"></i>
                   </Button>
                   <Button
                     variant="outline-danger"
                     size="sm"
-                    onClick={() => abrirModalEliminacion(categoria)}
+                    onClick={() => abrirModalEliminacion(usuario)}
                   >
                     <i className="bi bi-trash"></i>
                   </Button>
@@ -89,14 +92,12 @@ totalElementos, elementosPorPagina, paginaActual, establecerPaginaActual }) => {
           })}
         </tbody>
       </Table>
-
-          <Paginacion
-            elementosPorPagina={elementosPorPagina}
-            totalElementos={totalElementos}
-            paginaActual={paginaActual}
-            establecerPaginaActual={establecerPaginaActual}
-          />
-
+      <Paginacion
+              elementosPorPagina={elementosPorPagina}
+              totalElementos={totalElementos}
+              paginaActual={paginaActual}
+              establecerPaginaActual={establecerPaginaActual}
+            />
     </>
   );
 
@@ -104,4 +105,4 @@ totalElementos, elementosPorPagina, paginaActual, establecerPaginaActual }) => {
 
 
 
-export default TablaCategorias;
+export default TablaUsuarios;
