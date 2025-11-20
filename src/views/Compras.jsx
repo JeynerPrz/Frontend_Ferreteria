@@ -1,74 +1,129 @@
-import { useState, useEffect } from 'react';
-import { Container, Row, Col } from 'react-bootstrap';
-import TablaCompras from '../components/compra/TablaCompras';
-import CuadroBusquedas from '../components/busquedas/CuadroBusquedas';
+// src/views/Compras.jsx  →  VERSIÓN INDESTRUCTIBLE
+import { useState, useEffect } from "react";
+import { Container, Button, Row, Col } from "react-bootstrap";
+import axios from "axios";
 
+import TablaCompras from "../components/compras/TablaCompras";
+import CuadroBusquedas from "../components/busquedas/CuadroBusquedas";
+import ModalDetallesCompra from "../components/detalles_compras/ModalDetallesCompra";
+import ModalRegistroCompra from "../components/compras/ModalRegistroCompra";
+import ModalEdicionCompra from "../components/compras/ModalEdicionCompra";
+import ModalEliminacionCompra from "../components/compras/ModalEliminacionCompra";
 
-
-const Compra = () => {
-
+const Compras = () => {
   const [compras, setCompras] = useState([]);
-  const [cargando, setCargando] = useState(true);
-
   const [comprasFiltradas, setComprasFiltradas] = useState([]);
+  const [cargando, setCargando] = useState(true);
   const [textoBusqueda, setTextoBusqueda] = useState("");
 
-  const obtenerCompras = async () => {
-    try {
-      const respuesta = await fetch('http://localhost:3000/api/compra') // Devuelve todas las compras
-      if (!respuesta.ok) {
-        throw new Error('Error al obtener las compras');
-      }
+  const [showDetalle, setShowDetalle] = useState(false);
+  const [showRegistro, setShowRegistro] = useState(false);
+  const [showEdicion, setShowEdicion] = useState(false);
+  const [showEliminacion, setShowEliminacion] = useState(false);
 
-      const datos = await respuesta.json();
-      setCompras(datos);
-      setComprasFiltradas(datos);
-      setCargando(false);
-    } catch (error) {
-      console.log(error.message);
-      setCargando(false);
-    }
-  };
+  const [detallesCompra, setDetallesCompra] = useState([]);
+  const [compraSeleccionada, setCompraSeleccionada] = useState(null);
 
-  const manejarCambioBusqueda = (e) => {
-    const texto = (e.target.value || '').toLowerCase();
-    setTextoBusqueda(texto);
-
-    const filtradas = compras.filter((compra) => {
-      const idEmp = String(compra.id_empleado || '').toLowerCase();
-      const fecha = (compra.fecha_compra || '').toLowerCase();
-      const total = String(compra.total_compra || '').toLowerCase();
-      return idEmp.includes(texto) || fecha.includes(texto) || total.includes(texto);
-    });
-    setComprasFiltradas(filtradas);
-  };
-
+  const API_URL = "http://localhost:3000/api";
 
   useEffect(() => {
-    obtenerCompras();
+    const cargarCompras = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/compras`);
+        console.log("RESPUESTA COMPLETA DEL BACKEND:", res.data);
+
+        const comprasProcesadas = await Promise.all(
+          res.data.map(async (compra) => {
+            // DETECTA EL ID AUTOMÁTICAMENTE (funciona aunque el backend esté mal)
+            const id = 
+              compra.ID_Compra || 
+              compra.id_compra || 
+              compra.idCompra || 
+              compra.id || 
+              compra.compra_id || 
+              compra.IdCompra || 
+              compra._id;
+
+            console.log(`Compra procesada → ID detectado: ${id}`, compra);
+
+            if (!id) {
+              return { ...compra, detalles: [], idCompra: "sin-id" };
+            }
+
+            try {
+              const det = await axios.get(`${API_URL}/compras/${id}/detalles`);
+              return { ...compra, detalles: det.data || [], idCompra: id };
+            } catch {
+              return { ...compra, detalles: [], idCompra: id };
+            }
+          })
+        );
+
+        setCompras(comprasProcesadas);
+        setComprasFiltradas(comprasProcesadas);
+      } catch (err) {
+        console.error("Error total:", err);
+        alert("Backend apagado o ruta mala");
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarCompras();
   }, []);
 
+  // Búsqueda
+  useEffect(() => {
+    if (!textoBusqueda.trim()) {
+      setComprasFiltradas(compras);
+      return;
+    }
+    setComprasFiltradas(
+      compras.filter(c =>
+        String(c.idCompra || c.ID_Compra || "").includes(textoBusqueda) ||
+        (c.Proveedor || "").toLowerCase().includes(textoBusqueda.toLowerCase()) ||
+        (c.Fecha_Compra || "").includes(textoBusqueda)
+      )
+    );
+  }, [textoBusqueda, compras]);
+
+  const verDetalle = (compra => {
+    setDetallesCompra(compra.detalles || []);
+    setShowDetalle(true);
+  };
 
   return (
-    <>
-      <Container className="mt-4">
-        <h4>Compras</h4>
+    <Container className="mt-4">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="text-success fw-bold">Gestión de Compras</h2>
+        <Button variant="success" size="lg" onClick={() => setShowRegistro(true)}>
+          + Nueva Compra
+        </Button>
+      </div>
 
-        <Row>
-          <Col lg={5} md={8} sm={8} xs={7}>
-            <CuadroBusquedas
-              textoBusqueda={textoBusqueda}
-              manejarCambioBusqueda={manejarCambioBusqueda}
-            />
-          </Col>
-        </Row>
+      <Row className="mb-4">
+        <Col lg={6}>
+          <CuadroBusquedas
+            textoBusqueda={textoBusqueda}
+            manejarCambioBusqueda={e => setTextoBusqueda(e.target.value)}
+          />
+        </Col>
+      </Row>
 
-        <TablaCompras
-          compras={comprasFiltradas}
-          cargando={cargando}
-        />
-      </Container>
-    </>
+      <TablaCompras
+        compras={comprasFiltradas}
+        cargando={cargando}
+        onVerDetalle={verDetalle}
+        onEditar={c => { setCompraSeleccionada(c); setShowEdicion(true); }}
+        onEliminar={c => { setCompraSeleccionada(c); setShowEliminacion(true); }}
+      />
+
+      <ModalDetallesCompra mostrarModal={showDetalle} setMostrarModal={setShowDetalle} detalles={detallesCompra} />
+      <ModalRegistroCompra mostrar={showRegistro} setMostrar={setShowRegistro} />
+      <ModalEdicionCompra mostrar={showEdicion} setMostrar={setShowEdicion} compra={compraSeleccionada} />
+      <ModalEliminacionCompra mostrar={showEliminacion} setMostrar={setShowEliminacion} compra={compraSeleccionada} />
+    </Container>
   );
-}
-export default Compra;
+};
+
+export default Compras;
