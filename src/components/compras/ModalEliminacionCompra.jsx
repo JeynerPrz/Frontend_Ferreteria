@@ -4,14 +4,25 @@ const ModalEliminacionCompra = ({ mostrar, setMostrar, compra, confirmarEliminac
   return (
     <Modal show={mostrar} onHide={() => setMostrar(false)}>
       <Modal.Header closeButton>
-        <Modal.Title>Confirmar Eliminación</Modal.Title>
+        <Modal.Title>Eliminar Compra</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        ¿Estás seguro de eliminar la compra #{compra?.id_compra}?
+        {compra ? (
+          <p>
+            ¿Está seguro que desea eliminar la compra con ID:{" "}
+            <strong>{compra.id_compra}</strong>?
+          </p>
+        ) : (
+          <p>No hay compra seleccionada</p>
+        )}
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={() => setMostrar(false)}>Cancelar</Button>
-        <Button variant="danger" onClick={confirmarEliminacion}>Eliminar</Button>
+        <Button variant="secondary" onClick={() => setMostrar(false)}>
+          Cancelar
+        </Button>
+        <Button variant="danger" onClick={confirmarEliminacion}>
+          Eliminar
+        </Button>
       </Modal.Footer>
     </Modal>
   );

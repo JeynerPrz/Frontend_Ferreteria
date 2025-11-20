@@ -1,4 +1,4 @@
-import { Modal, Table, Button } from 'react-bootstrap';
+import { Modal, Table, Button } from "react-bootstrap";
 
 const ModalDetallesCompra = ({ mostrarModal, setMostrarModal, detalles }) => {
   return (
@@ -18,7 +18,11 @@ const ModalDetallesCompra = ({ mostrarModal, setMostrarModal, detalles }) => {
           </thead>
           <tbody>
             {detalles.length === 0 ? (
-              <tr><td colSpan={4} className="text-center">No hay detalles</td></tr>
+              <tr>
+                <td colSpan={4} className="text-center">
+                  No hay detalles
+                </td>
+              </tr>
             ) : (
               detalles.map((d) => (
                 <tr key={d.id_detalle_compra || d.id_detalle}>
@@ -33,7 +37,9 @@ const ModalDetallesCompra = ({ mostrarModal, setMostrarModal, detalles }) => {
         </Table>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={setMostrarModal}>Cerrar</Button>
+        <Button variant="secondary" onClick={setMostrarModal}>
+          Cerrar
+        </Button>
       </Modal.Footer>
     </Modal>
   );

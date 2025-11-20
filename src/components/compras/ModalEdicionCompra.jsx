@@ -1,145 +1,103 @@
-import { useState, useEffect } from "react";
-import { Modal, Form, Button, Table, Row, Col, FormControl } from "react-bootstrap";
-import AsyncSelect from 'react-select/async';
+import React, { useState, useEffect } from "react";
+import { Modal, Button, Form } from "react-bootstrap";
 
-const ModalEdicionCompra = ({ mostrar, setMostrar, compra, compraEnEdicion, setCompraEnEdicion, detalles, setDetalles, actualizarCompra, productos, empleados, hoy }) => {
-  const [productoSel, setProductoSel] = useState(null);
-  const [empleadoSel, setEmpleadoSel] = useState(null);
-  const [nuevoDetalle, setNuevoDetalle] = useState({ id_producto: '', cantidad: '' });
+const API_URL = "http://localhost:3000/api";
+
+const ModalEdicionCompra = ({ mostrar, setMostrar, compra, empleados }) => {
+  const [formData, setFormData] = useState({
+    id_empleado: "",
+    fecha_compra: "",
+    total_compra: 0,
+  });
 
   useEffect(() => {
-    // cuando se abre, preconfigurar si existe compra
-    if (compra && empleados.length > 0) {
-      const empleado = empleados.find(e => e.id_empleado === compraEnEdicion.id_empleado);
-      setEmpleadoSel(empleado ? { value: empleado.id_empleado, label: `${empleado.primer_nombre} ${empleado.primer_apellido}` } : null);
+    if (compra) {
+      setFormData({
+        id_empleado: compra.id_empleado || "",
+        fecha_compra: compra.fecha_compra ? compra.fecha_compra.split("T")[0] : "",
+        total_compra: compra.total_compra || 0,
+      });
     }
-  }, [compra, compraEnEdicion, empleados]);
+  }, [compra]);
 
-  // cargar opciones para AsyncSelect
-  const cargarOpciones = (lista, campo) => (input, callback) => {
-    const filtrados = lista.filter(item => {
-      const valor = campo === 'nombre_producto' ? item.nombre_producto : `${item.primer_nombre} ${item.primer_apellido}`;
-      return String(valor).toLowerCase().includes(String(input).toLowerCase());
-    });
-    callback(filtrados.map(item => ({
-      value: item.id_producto || item.id_empleado,
-      label: campo === 'nombre_producto' ? item.nombre_producto : `${item.primer_nombre} ${item.primer_apellido}`,
-      precio: item.precio_unitario,
-      stock: item.stock
-    })));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const manejarEmpleado = (sel) => {
-    setEmpleadoSel(sel);
-    setCompraEnEdicion(prev => ({ ...prev, id_empleado: sel ? sel.value : '' }));
-  };
-
-  const manejarProducto = (sel) => {
-    setProductoSel(sel);
-    setNuevoDetalle(prev => ({ ...prev, id_producto: sel ? sel.value : '', precio_unitario: sel ? sel.precio : 0 }));
-  };
-
-  const agregarDetalle = () => {
-    if (!nuevoDetalle.id_producto || !nuevoDetalle.cantidad || nuevoDetalle.cantidad <= 0) {
-      alert("Selecciona producto y cantidad válida.");
-      return;
+  const actualizarCompra = async () => {
+    try {
+      const res = await fetch(
+        `${API_URL}/actualizarcomprapatch/${compra.id_compra}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        }
+      );
+      if (!res.ok) throw new Error("Error actualizando compra");
+      alert("Compra actualizada");
+      setMostrar(false);
+    } catch (error) {
+      alert("Error al actualizar compra");
+      console.error(error);
     }
-
-    const prod = productos.find(p => p.id_producto === parseInt(nuevoDetalle.id_producto));
-    if (!prod) return;
-    if (nuevoDetalle.cantidad > prod.stock) {
-      alert(`Stock insuficiente: ${prod.stock}`);
-      return;
-    }
-
-    setDetalles(prev => [...prev, {
-      id_producto: parseInt(nuevoDetalle.id_producto),
-      nombre_producto: prod.nombre_producto,
-      cantidad: parseInt(nuevoDetalle.cantidad),
-      precio_unitario: parseFloat(nuevoDetalle.precio_unitario)
-    }] );
-
-    setNuevoDetalle({ id_producto: '', cantidad: '' });
-    setProductoSel(null);
   };
 
   return (
-    <Modal backdrop="static" show={mostrar} onHide={setMostrar} size="xl" fullscreen="lg-down">
-      <Modal.Header closeButton><Modal.Title>Editar Compra</Modal.Title></Modal.Header>
+    <Modal show={mostrar} onHide={() => setMostrar(false)}>
+      <Modal.Header closeButton>
+        <Modal.Title>Editar Compra</Modal.Title>
+      </Modal.Header>
       <Modal.Body>
         <Form>
-          <Row>
-            <Col md={6}>
-              <Form.Group>
-                <Form.Label>Empleado</Form.Label>
-                <AsyncSelect
-                  cacheOptions
-                  defaultOptions
-                  loadOptions={cargarOpciones(empleados, 'primer_nombre')}
-                  onChange={manejarEmpleado}
-                  value={empleadoSel}
-                  placeholder="Buscar empleado..."
-                  isClearable
-                />
-              </Form.Group>
-            </Col>
-            <Col md={4}>
-              <Form.Group>
-                <Form.Label>Fecha</Form.Label>
-                <Form.Control type="date" value={compraEnEdicion?.fecha_compra || ''} onChange={e => setCompraEnEdicion(prev => ({ ...prev, fecha_compra: e.target.value }))} max={hoy} />
-              </Form.Group>
-            </Col>
-          </Row>
+          <Form.Group className="mb-3" controlId="empleadoSelect">
+            <Form.Label>Empleado</Form.Label>
+            <Form.Select
+              name="id_empleado"
+              value={formData.id_empleado}
+              onChange={handleChange}
+            >
+              <option value="">Seleccione un empleado</option>
+              {empleados.map((emp) => (
+                <option key={emp.id_empleado} value={emp.id_empleado}>
+                  {emp.primer_nombre} {emp.primer_apellido}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
 
-          <hr />
-          <h5>Agregar Producto</h5>
-          <Row>
-            <Col md={5}>
-              <AsyncSelect
-                cacheOptions
-                defaultOptions
-                loadOptions={cargarOpciones(productos, 'nombre_producto')}
-                onChange={manejarProducto}
-                value={productoSel}
-                placeholder="Buscar producto..."
-                isClearable
-              />
-            </Col>
-            <Col md={3}>
-              <FormControl type="number" placeholder="Cantidad" value={nuevoDetalle.cantidad} onChange={e => setNuevoDetalle(prev => ({ ...prev, cantidad: e.target.value }))} min="1" />
-            </Col>
-            <Col md={4}>
-              <Button variant="success" onClick={agregarDetalle} style={{ width: '100%' }}>Agregar</Button>
-            </Col>
-          </Row>
+          <Form.Group className="mb-3" controlId="fechaCompra">
+            <Form.Label>Fecha de Compra</Form.Label>
+            <Form.Control
+              type="date"
+              name="fecha_compra"
+              value={formData.fecha_compra}
+              onChange={handleChange}
+            />
+          </Form.Group>
 
-          {detalles.length > 0 && (
-            <Table striped className="mt-3">
-              <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead>
-              <tbody>
-                {detalles.map((d, i) => (
-                  <tr key={i}>
-                    <td>{d.nombre_producto}</td>
-                    <td>{d.cantidad}</td>
-                    <td>C$ {d.precio_unitario.toFixed(2)}</td>
-                    <td>C$ {(d.cantidad * d.precio_unitario).toFixed(2)}</td>
-                    <td><Button size="sm" variant="danger" onClick={() => setDetalles(prev => prev.filter((_, idx) => idx !== i))}>X</Button></td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={3} className="text-end"><strong>Total:</strong></td>
-                  <td colSpan={2}><strong>C$ {detalles.reduce((s,d)=>s+(d.cantidad*d.precio_unitario),0).toFixed(2)}</strong></td>
-                </tr>
-              </tfoot>
-            </Table>
-          )}
+          <Form.Group className="mb-3" controlId="totalCompra">
+            <Form.Label>Total Compra</Form.Label>
+            <Form.Control
+              type="number"
+              name="total_compra"
+              value={formData.total_compra}
+              readOnly
+            />
+          </Form.Group>
         </Form>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={setMostrar}>Cancelar</Button>
-        <Button variant="primary" onClick={actualizarCompra}>Guardar Cambios</Button>
+        <Button variant="secondary" onClick={() => setMostrar(false)}>
+          Cancelar
+        </Button>
+        <Button variant="primary" onClick={actualizarCompra}>
+          Guardar Cambios
+        </Button>
       </Modal.Footer>
     </Modal>
   );

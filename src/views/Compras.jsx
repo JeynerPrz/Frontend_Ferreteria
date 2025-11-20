@@ -1,128 +1,228 @@
-// src/views/Compras.jsx  →  VERSIÓN INDESTRUCTIBLE
-import { useState, useEffect } from "react";
-import { Container, Button, Row, Col } from "react-bootstrap";
-import axios from "axios";
-
+import { useEffect, useState } from "react";
 import TablaCompras from "../components/compras/TablaCompras";
-import CuadroBusquedas from "../components/busquedas/CuadroBusquedas";
-import ModalDetallesCompra from "../components/detalles_compras/ModalDetallesCompra";
 import ModalRegistroCompra from "../components/compras/ModalRegistroCompra";
 import ModalEdicionCompra from "../components/compras/ModalEdicionCompra";
 import ModalEliminacionCompra from "../components/compras/ModalEliminacionCompra";
+import ModalDetallesCompras from "../components/detalles_compras/ModalDetallesCompras";
+
+const API_URL = "http://localhost:3000/api";
 
 const Compras = () => {
   const [compras, setCompras] = useState([]);
-  const [comprasFiltradas, setComprasFiltradas] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [textoBusqueda, setTextoBusqueda] = useState("");
+  const [cargando, setCargando] = useState(false);
 
-  const [showDetalle, setShowDetalle] = useState(false);
-  const [showRegistro, setShowRegistro] = useState(false);
-  const [showEdicion, setShowEdicion] = useState(false);
-  const [showEliminacion, setShowEliminacion] = useState(false);
+  const [modalRegistroMostrar, setModalRegistroMostrar] = useState(false);
+  const [modalEdicionMostrar, setModalEdicionMostrar] = useState(false);
+  const [modalEliminarMostrar, setModalEliminarMostrar] = useState(false);
+  const [modalDetallesMostrar, setModalDetallesMostrar] = useState(false);
 
-  const [detallesCompra, setDetallesCompra] = useState([]);
   const [compraSeleccionada, setCompraSeleccionada] = useState(null);
+  const [detallesCompra, setDetallesCompra] = useState([]);
 
-  const API_URL = "http://localhost:3000/api";
+  const [nuevaCompra, setNuevaCompra] = useState({
+    id_empleado: "",
+    fecha_compra: "",
+    total_compra: 0,
+  });
+
+  const [detalles, setDetalles] = useState([]);
+
+  const [empleados, setEmpleados] = useState([]);
+  const [productos, setProductos] = useState([]);
+
+  const hoy = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
-    const cargarCompras = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/compras`);
-        console.log("RESPUESTA COMPLETA DEL BACKEND:", res.data);
-
-        const comprasProcesadas = await Promise.all(
-          res.data.map(async (compra) => {
-            // DETECTA EL ID AUTOMÁTICAMENTE (funciona aunque el backend esté mal)
-            const id = 
-              compra.ID_Compra || 
-              compra.id_compra || 
-              compra.idCompra || 
-              compra.id || 
-              compra.compra_id || 
-              compra.IdCompra || 
-              compra._id;
-
-            console.log(`Compra procesada → ID detectado: ${id}`, compra);
-
-            if (!id) {
-              return { ...compra, detalles: [], idCompra: "sin-id" };
-            }
-
-            try {
-              const det = await axios.get(`${API_URL}/compras/${id}/detalles`);
-              return { ...compra, detalles: det.data || [], idCompra: id };
-            } catch {
-              return { ...compra, detalles: [], idCompra: id };
-            }
-          })
-        );
-
-        setCompras(comprasProcesadas);
-        setComprasFiltradas(comprasProcesadas);
-      } catch (err) {
-        console.error("Error total:", err);
-        alert("Backend apagado o ruta mala");
-      } finally {
-        setCargando(false);
-      }
-    };
-
-    cargarCompras();
+    obtenerCompras();
+    obtenerEmpleados();
+    obtenerProductos();
   }, []);
 
-  // Búsqueda
-  useEffect(() => {
-    if (!textoBusqueda.trim()) {
-      setComprasFiltradas(compras);
-      return;
+  async function obtenerCompras() {
+    setCargando(true);
+    try {
+      const res = await fetch(`${API_URL}/compras`);
+      const data = await res.json();
+      setCompras(data);
+    } catch (error) {
+      alert("Error al cargar las compras");
+      console.error(error);
     }
-    setComprasFiltradas(
-      compras.filter(c =>
-        String(c.idCompra || c.ID_Compra || "").includes(textoBusqueda) ||
-        (c.Proveedor || "").toLowerCase().includes(textoBusqueda.toLowerCase()) ||
-        (c.Fecha_Compra || "").includes(textoBusqueda)
-      )
-    );
-  }, [textoBusqueda, compras]);
+    setCargando(false);
+  }
 
-  const verDetalle = (compra => {
-    setDetallesCompra(compra.detalles || []);
-    setShowDetalle(true);
+  async function obtenerEmpleados() {
+    try {
+      const res = await fetch(`${API_URL}/empleados`);
+      const data = await res.json();
+      setEmpleados(data);
+    } catch (error) {
+      console.error("Error cargando empleados", error);
+    }
+  }
+
+  async function obtenerProductos() {
+    try {
+      const res = await fetch(`${API_URL}/productos`);
+      const data = await res.json();
+      setProductos(data);
+    } catch (error) {
+      console.error("Error cargando productos", error);
+    }
+  }
+
+  const abrirModalEdicion = (compra) => {
+    setCompraSeleccionada(compra);
+    setNuevaCompra({
+      id_empleado: compra.id_empleado,
+      fecha_compra: compra.fecha_compra.split("T")[0],
+      total_compra: compra.total_compra,
+    });
+    setDetalles([]); // Aquí podrías cargar detalles si quieres
+    setModalEdicionMostrar(true);
   };
 
-  return (
-    <Container className="mt-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="text-success fw-bold">Gestión de Compras</h2>
-        <Button variant="success" size="lg" onClick={() => setShowRegistro(true)}>
-          + Nueva Compra
-        </Button>
-      </div>
+  const abrirModalEliminacion = (compra) => {
+    setCompraSeleccionada(compra);
+    setModalEliminarMostrar(true);
+  };
 
-      <Row className="mb-4">
-        <Col lg={6}>
-          <CuadroBusquedas
-            textoBusqueda={textoBusqueda}
-            manejarCambioBusqueda={e => setTextoBusqueda(e.target.value)}
-          />
-        </Col>
-      </Row>
+  async function obtenerDetalles(id_compra) {
+    try {
+      const res = await fetch(`${API_URL}/detalles_por_compra/${id_compra}`);
+
+      if (!res.ok) {
+        throw new Error(`Error al obtener detalles de la compra con id ${id_compra}`);
+      }
+
+      const data = await res.json();
+
+      // Aseguramos que data sea un arreglo para evitar errores en el modal
+      setDetallesCompra(Array.isArray(data) ? data : []);
+
+      // Mostrar modal con los detalles
+      setModalDetallesMostrar(true);
+
+    } catch (error) {
+      alert("Error cargando detalles de compra");
+      console.error(error);
+    }
+  }
+
+  async function agregarCompra() {
+    try {
+      const totalCalculado = detalles.reduce(
+        (acc, det) => acc + det.cantidad * det.precio_unitario,
+        0
+      );
+      const compraPayload = {
+        ...nuevaCompra,
+        total_compra: totalCalculado,
+      };
+
+      const resCompra = await fetch(`${API_URL}/registrarcompra`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(compraPayload),
+      });
+
+      if (!resCompra.ok) throw new Error("Error al registrar compra");
+
+      const dataCompra = await resCompra.json();
+
+      for (const detalle of detalles) {
+        const detallePayload = {
+          id_compra: dataCompra.id_compra,
+          id_producto: detalle.id_producto,
+          cantidad: detalle.cantidad,
+          precio_unitario: detalle.precio_unitario,
+        };
+        await fetch(`${API_URL}/registrardetallecompra`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(detallePayload),
+        });
+      }
+
+      alert("Compra registrada con éxito");
+      setModalRegistroMostrar(false);
+      obtenerCompras();
+      setNuevaCompra({ id_empleado: "", fecha_compra: "", total_compra: 0 });
+      setDetalles([]);
+    } catch (error) {
+      alert("Error al guardar compra");
+      console.error(error);
+    }
+  }
+
+  async function confirmarEliminacion() {
+    try {
+      const res = await fetch(
+        `${API_URL}/eliminarcompra/${compraSeleccionada.id_compra}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) throw new Error("Error al eliminar compra");
+      alert("Compra eliminada");
+      setModalEliminarMostrar(false);
+      obtenerCompras();
+    } catch (error) {
+      alert("Error al eliminar compra");
+      console.error(error);
+    }
+  }
+
+  return (
+    <>
+      <h2>Gestión de Compras</h2>
+      <button
+        className="btn btn-primary mb-3"
+        onClick={() => setModalRegistroMostrar(true)}
+      >
+        Nueva Compra
+      </button>
 
       <TablaCompras
-        compras={comprasFiltradas}
+        compras={compras}
         cargando={cargando}
-        onVerDetalle={verDetalle}
-        onEditar={c => { setCompraSeleccionada(c); setShowEdicion(true); }}
-        onEliminar={c => { setCompraSeleccionada(c); setShowEliminacion(true); }}
+        obtenerDetalles={obtenerDetalles}
+        abrirModalEdicion={abrirModalEdicion}
+        abrirModalEliminacion={abrirModalEliminacion}
       />
 
-      <ModalDetallesCompra mostrarModal={showDetalle} setMostrarModal={setShowDetalle} detalles={detallesCompra} />
-      <ModalRegistroCompra mostrar={showRegistro} setMostrar={setShowRegistro} />
-      <ModalEdicionCompra mostrar={showEdicion} setMostrar={setShowEdicion} compra={compraSeleccionada} />
-      <ModalEliminacionCompra mostrar={showEliminacion} setMostrar={setShowEliminacion} compra={compraSeleccionada} />
-    </Container>
+      <ModalRegistroCompra
+        mostrar={modalRegistroMostrar}
+        setMostrar={() => setModalRegistroMostrar(false)}
+        nuevaCompra={nuevaCompra}
+        setNuevaCompra={setNuevaCompra}
+        detalles={detalles}
+        setDetalles={setDetalles}
+        empleados={empleados}
+        productos={productos}
+        agregarCompra={agregarCompra}
+        hoy={hoy}
+      />
+
+      <ModalEdicionCompra
+        mostrar={modalEdicionMostrar}
+        setMostrar={() => setModalEdicionMostrar(false)}
+        compra={compraSeleccionada}
+        empleados={empleados}
+        productos={productos}
+      />
+
+      <ModalEliminacionCompra
+        mostrar={modalEliminarMostrar}
+        setMostrar={() => setModalEliminarMostrar(false)}
+        compra={compraSeleccionada}
+        confirmarEliminacion={confirmarEliminacion}
+      />
+
+      <ModalDetallesCompras
+        mostrarModal={modalDetallesMostrar}
+        setMostrarModal={() => setModalDetallesMostrar(false)}
+        detalles={detallesCompra}
+      />
+    </>
   );
 };
 
